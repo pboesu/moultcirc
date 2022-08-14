@@ -9,7 +9,7 @@ uz2_circ(
   date_column,
   start_formula = ~1,
   duration_formula = ~1,
-  sigma_formula = ~1,
+  kappa_formula = ~1,
   data,
   init = "auto",
   log_lik = TRUE,
@@ -25,7 +25,7 @@ uz2_circ(
 
 \item{duration_formula}{model formula for duration}
 
-\item{sigma_formula}{model formula for start date sigma}
+\item{kappa_formula}{model formula for start date sigma}
 
 \item{data}{Input data frame must contain a numeric column "date" and a column "moult_index" which is a numeric vector of moult scores ranging from 0 (old plumage) to  1 (new plumage).}
 
@@ -33,7 +33,7 @@ uz2_circ(
 
 \item{log_lik}{boolean retain pointwise log-likelihood in output? This enables model assessment and selection via the loo package. Defaults to true, can lead to very large output arrays if sample size is large.}
 
-\item{...}{Arguments passed to `cmdstanr` sampling method (e.g. iter, chains).}
+\item{...}{Arguments passed to `cmdstanr` sampling method (e.g. chains).}
 }
 \value{
 An object of class `moultmcmc`

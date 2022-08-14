@@ -27,7 +27,7 @@ data {
 parameters {
   real<lower=-1*pi(),upper=pi()> alpha_mu;//mean start date // model seems to fail when this is bounded on 0,2*pi
   real<lower=0,upper=2*pi()> alpha_tau;//moult duration
-  real<lower=0> alpha_kappa;//von Mises concentration parameter of moult start date
+  real alpha_kappa;//von Mises concentration parameter of moult start date // unconstrained b/c log link is used
   vector[N_pred_mu-1] beta_mu;//regression coefficients for start date
   vector[N_pred_tau-1] beta_tau;//regression coefficients for duration
   vector[N_pred_kappa-1] beta_kappa;//regression coefficients for sigma start
@@ -37,14 +37,7 @@ parameters {
 }
 
 transformed parameters{
-  vector[N_old+N_moult+N_new] mu;//start date lin pred
-  vector[N_old+N_moult+N_new] tau;//duration lin pred
-  vector[N_old+N_moult+N_new] kappa;//duration lin pred
-   mu = X_mu * append_row(alpha_mu,beta_mu);
-  //  print(mu);
-    tau = X_tau * append_row(alpha_tau,beta_tau);
-  //  print(tau);
-    kappa = exp(X_kappa * append_row(alpha_kappa,beta_kappa));//use log link for dispersion lin pred
+
 }
 // The model to be estimated. We model the output
 // 'y' to be normally distributed with mean 'mu'
@@ -53,6 +46,15 @@ model {
   vector[N_old] P;
   vector[N_moult] q;
   vector[N_new] R;
+
+  vector[N_old+N_moult+N_new] mu;//start date lin pred
+  vector[N_old+N_moult+N_new] tau;//duration lin pred
+  vector[N_old+N_moult+N_new] kappa;//duration lin pred
+  mu = X_mu * append_row(alpha_mu,beta_mu);
+  //  print(mu);
+  tau = X_tau * append_row(alpha_tau,beta_tau);
+  //  print(tau);
+  kappa = exp(X_kappa * append_row(alpha_kappa,beta_kappa));//use log link for dispersion lin pred
 
 for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
 for (i in 1:N_moult) {
@@ -83,11 +85,11 @@ real sigma_approx;
 real sigma_exact;
 real mu_days;
 real tau_days;
- mu_days = (alpha_mu + pi())*365/(2*pi());
+ mu_days = (alpha_mu + pi())*365/(2*pi());//this really needs modulo treatment in case the CI spans "new year" - might really mess with downstream summary stats though
  tau_days = alpha_tau*365/(2*pi());
- end_date = mu_days + tau_days;
- sigma_approx = sqrt(1/alpha_kappa)*365/(2*pi());
- sigma_exact = sqrt(1 - modified_bessel_first_kind(1,alpha_kappa)/modified_bessel_first_kind(0,alpha_kappa))*365/(2*pi());//the circular standard deviation -- double check this, as this uses sqrt(circular variance) which is possibly incorrect
+ end_date = mu_days + tau_days;//this needs modulo treatment
+ sigma_approx = sqrt(1/exp(alpha_kappa))*365/(2*pi());
+ sigma_exact = sqrt(1 - modified_bessel_first_kind(1,exp(alpha_kappa))/modified_bessel_first_kind(0,exp(alpha_kappa)))*365/(2*pi());//the circular standard deviation -- double check this, as this uses sqrt(circular variance) which is possibly incorrect; also this bit is numerically unstable
 }
 
 
