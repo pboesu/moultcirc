@@ -51,7 +51,7 @@ uz2_circ <- function(moult_index_column, date_column, start_formula = ~1, durati
   if(inherits(init, 'character')){
     if (init == "auto"){
     mu_start = as.numeric(circular::mean.circular(standata$moult_dates))#use circular mean of moult obs
-    tau_start = sqrt(1/circular::mle.vonmises(standata$moult_dates)$kappa)#use 1sd of gaussian approximation of dispersion of moult dates
+    tau_start = 2*sqrt(1/circular::mle.vonmises(standata$moult_dates)$kappa)#use 2sd of gaussian approximation of dispersion of moult dates
     kappa_start = min(0.5, circular::mle.vonmises(standata$moult_dates)$kappa)# vM MLE of kappa seems to be too tight and then leads to slow sampling, try large dispersion first
     initfunc <- function(chain_id = 1) {
       # cat("chain_id =", chain_id, "\n")
@@ -62,12 +62,13 @@ uz2_circ <- function(moult_index_column, date_column, start_formula = ~1, durati
            beta_tau = as.array(c(rep(0, standata$N_pred_tau - 1))),
            beta_kappa = as.array(c(rep(0, standata$N_pred_kappa - 1))))#NB this is on log link scale
     }
-    uz2_vM <- cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"))
+    uz2_vM <- cmdstanr::cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"), stanc_options = list("O1"))
+    message(paste('sampling with automatically generated initial values: ', paste(names(unlist(initfunc())), unlist(initfunc()), sep = '=', collapse = ' ')))
     fit <- uz2_vM$sample(data = standata, init = initfunc, ...)
     #out <- rstan::sampling(stanmodels$uz2_linpred, data = standata, init = initfunc, pars = outpars, ...)
   } else { stop('unknown init code')
   }} else {
-    uz2_vM <- cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"))
+    uz2_vM <- cmdstanr::cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"), stanc_options = list("O1"))
     fit <- uz2_vM$sample(data = standata, init = init, ...)
   }
   stanfit <- rstan::read_stan_csv(fit$output_files())
@@ -81,7 +82,7 @@ uz2_circ <- function(moult_index_column, date_column, start_formula = ~1, durati
   out_struc$terms$date_column <- date_column
   out_struc$terms$moult_index_column <- moult_index_column
   out_struc$terms$moult_cat_column <- NA
+  out_struc$stan_profile <- fit$profiles()
   class(out_struc) <- 'moultmcmc'
   return(out_struc)
-  return(fit)
 }

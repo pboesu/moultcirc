@@ -55,8 +55,10 @@ model {
   tau = X_tau * append_row(alpha_tau,beta_tau);
   //  print(tau);
   kappa = exp(X_kappa * append_row(alpha_kappa,beta_kappa));//use log link for dispersion lin pred
-
-for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+profile("old_lik"){
+  for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+}
+profile("moult_lik"){
 for (i in 1:N_moult) {
   if ((moult_dates[i] - moult_indices[i]*tau[i+N_old]) > -1*pi()) {
     q[i] = log(tau[i+N_old]) + von_mises_lpdf((moult_dates[i] - moult_indices[i]*tau[i+N_old]) | mu[i+N_old], kappa[i+N_old]);//
@@ -64,6 +66,8 @@ for (i in 1:N_moult) {
     q[i] = log(tau[i+N_old]) + von_mises_lpdf(((moult_dates[i] - moult_indices[i]*tau[i+N_old])+ 2*pi()) | mu[i+N_old], kappa[i+N_old]);//
   }
 }
+}
+profile("new_lik"){
 for (i in 1:N_new) {
   if ((new_dates[i] - tau[i+N_old+N_moult]) > -1*pi()) {
     R[i] = von_mises_cdf((new_dates[i] - tau[i+N_old+N_moult])| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
@@ -71,12 +75,14 @@ for (i in 1:N_new) {
     R[i] = von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
   }
 }
-
+}
 target += sum(log(P))+sum(q)+sum(log(R));
 //priors
-alpha_mu ~ von_mises(0,0.5);
-alpha_tau ~ normal(0,pi());//should be truncated? or are the parameter constraints sufficient?
-alpha_kappa ~ normal(0,10);
+profile("priors"){
+  alpha_mu ~ von_mises(0,0.5);
+  alpha_tau ~ normal(0,pi());//should be truncated? or are the parameter constraints sufficient?
+  alpha_kappa ~ normal(0,10);
+  }
 }
 
 generated quantities{
@@ -85,11 +91,14 @@ real sigma_approx;
 real sigma_exact;
 real mu_days;
 real tau_days;
+profile("generated"){
  mu_days = (alpha_mu + pi())*365/(2*pi());//this really needs modulo treatment in case the CI spans "new year" - might really mess with downstream summary stats though
  tau_days = alpha_tau*365/(2*pi());
  end_date = mu_days + tau_days;//this needs modulo treatment
  sigma_approx = sqrt(1/exp(alpha_kappa))*365/(2*pi());
  sigma_exact = sqrt(1 - modified_bessel_first_kind(1,exp(alpha_kappa))/modified_bessel_first_kind(0,exp(alpha_kappa)))*365/(2*pi());//the circular standard deviation -- double check this, as this uses sqrt(circular variance) which is possibly incorrect; also this bit is numerically unstable
+  }
+
 }
 
 
