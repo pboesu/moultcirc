@@ -50,9 +50,10 @@ uz2_circ <- function(moult_index_column, date_column, start_formula = ~1, durati
   #guess initial values
   if(inherits(init, 'character')){
     if (init == "auto"){
-    mu_start = as.numeric(circular::mean.circular(standata$moult_dates))#use circular mean of moult obs
-    tau_start = 2*sqrt(1/circular::mle.vonmises(standata$moult_dates)$kappa)#use 2sd of gaussian approximation of dispersion of moult dates
-    kappa_start = min(0.5, circular::mle.vonmises(standata$moult_dates)$kappa)# vM MLE of kappa seems to be too tight and then leads to slow sampling, try large dispersion first
+      moult_dates_circ <- circular::circular(standata$moult_dates)
+    mu_start = as.numeric(circular::mean.circular(moult_dates_circ))#use circular mean of moult obs
+    tau_start = 4*sqrt(1/circular::mle.vonmises(moult_dates_circ)$kappa)#use 4sd of gaussian approximation of dispersion of moult dates
+    kappa_start = min(0.5, circular::mle.vonmises(moult_dates_circ)$kappa)# vM MLE of kappa seems to be too tight and then leads to slow sampling, try large dispersion first
     initfunc <- function(chain_id = 1) {
       # cat("chain_id =", chain_id, "\n")
       list(alpha_mu = mu_start, #initialize intercept term from data, set inits for all other effects to 0
