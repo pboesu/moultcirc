@@ -10,6 +10,7 @@ uz2_circ(
   start_formula = ~1,
   duration_formula = ~1,
   kappa_formula = ~1,
+  lump_non_moult = FALSE,
   data,
   init = "auto",
   log_lik = TRUE,
@@ -26,6 +27,8 @@ uz2_circ(
 \item{duration_formula}{model formula for duration}
 
 \item{kappa_formula}{model formula for start date sigma}
+
+\item{lump_non_moult}{logical; should pre- and post-moult observations be treated as indistinguishable? if TRUE, the type 2L model will be fitted.}
 
 \item{data}{Input data frame must contain a numeric column "date" and a column "moult_index" which is a numeric vector of moult scores ranging from 0 (old plumage) to  1 (new plumage).}
 
