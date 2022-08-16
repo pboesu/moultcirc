@@ -6,6 +6,7 @@
 #' @param start_formula model formula for start date
 #' @param duration_formula model formula for duration
 #' @param kappa_formula model formula for start date sigma
+#' @param lump_non_moult logical; should pre- and post-moult observations be treated as indistinguishable? if TRUE, the type 2L model will be fitted.
 #' @param data Input data frame must contain a numeric column "date" and a column "moult_index" which is a numeric vector of moult scores ranging from 0 (old plumage) to  1 (new plumage).
 #' @param init Specification of initial values for all or some parameters. Can be the string "auto" for an automatic guess based on the data, or any of the permitted rstan options: the digit 0, the strings "0" or "random", or a function. See the detailed documentation for the init argument in ?rstan::stan.
 #' @param log_lik boolean retain pointwise log-likelihood in output? This enables model assessment and selection via the loo package. Defaults to true, can lead to very large output arrays if sample size is large.
@@ -14,7 +15,16 @@
 #' @return An object of class `moultmcmc`
 #'
 #TODO: implement an input data class which ensures column names and correct encoding for categorical variables
-uz2_circ <- function(moult_index_column, date_column, start_formula = ~1, duration_formula = ~1, kappa_formula = ~1, data, init = "auto", log_lik = TRUE,...) {
+uz2_circ <- function(moult_index_column,
+                     date_column,
+                     start_formula = ~1,
+                     duration_formula = ~1,
+                     kappa_formula = ~1,
+                     lump_non_moult = FALSE,
+                     data,
+                     init = "auto",
+                     log_lik = TRUE,
+                     ...) {
   stopifnot(all(data[[moult_index_column]] >= 0 & data[[moult_index_column]] <= 1))
   stopifnot(is.numeric(data[[date_column]]))
   stopifnot(is.data.frame(data))
@@ -40,7 +50,8 @@ uz2_circ <- function(moult_index_column, date_column, start_formula = ~1, durati
                    X_tau = X_tau,
                    N_pred_tau = ncol(X_tau),
                    X_kappa = X_kappa,
-                   N_pred_kappa = ncol(X_kappa))
+                   N_pred_kappa = ncol(X_kappa),
+                   lumped = as.numeric(lump_non_moult))
   #include pointwise log_lik matrix  in output?
   if(log_lik){
     outpars <- c('beta_mu','beta_tau','beta_sigma', 'sigma_intercept', 'log_lik')

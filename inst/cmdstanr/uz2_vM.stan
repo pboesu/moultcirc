@@ -20,6 +20,7 @@ data {
   matrix[N_old+N_moult+N_new,N_pred_tau] X_tau;//design matrix for duration NB: when forming design matrix must paste together responses in blocks old, moult, new
   int N_pred_kappa;//number of predictors for start date sigma
   matrix[N_old+N_moult+N_new,N_pred_kappa] X_kappa;//design matrix for sigma start NB: when forming design matrix must paste together responses in blocks old, moult, new
+  int<lower=0,upper=1> lumped; //indicator variable for t2l likelihood
 }
 
 // The parameters accepted by the model. Our model
@@ -56,25 +57,45 @@ model {
   //  print(tau);
   kappa = exp(X_kappa * append_row(alpha_kappa,beta_kappa));//use log link for dispersion lin pred
 profile("old_lik"){
-  for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+  if (lumped == 0){
+    for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+  } else {
+      for (i in 1:N_old) {
+    if ((old_dates[i] - tau[i]) > -1*pi()) {
+      P[i] = (1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i])) + (von_mises_cdf((old_dates[i] - tau[i])| mu[i],kappa[i]));//
+    } else {
+      P[i] = (1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i])) + (von_mises_cdf(((old_dates[i] - tau[i]) + 2*pi())| mu[i],kappa[i]));//
+    }
+  }
+  }
 }
 profile("moult_lik"){
-for (i in 1:N_moult) {
-  if ((moult_dates[i] - moult_indices[i]*tau[i+N_old]) > -1*pi()) {
-    q[i] = log(tau[i+N_old]) + von_mises_lpdf((moult_dates[i] - moult_indices[i]*tau[i+N_old]) | mu[i+N_old], kappa[i+N_old]);//
-  } else {
-    q[i] = log(tau[i+N_old]) + von_mises_lpdf(((moult_dates[i] - moult_indices[i]*tau[i+N_old])+ 2*pi()) | mu[i+N_old], kappa[i+N_old]);//
+  for (i in 1:N_moult) {
+    if ((moult_dates[i] - moult_indices[i]*tau[i+N_old]) > -1*pi()) {
+      q[i] = log(tau[i+N_old]) + von_mises_lpdf((moult_dates[i] - moult_indices[i]*tau[i+N_old]) | mu[i+N_old], kappa[i+N_old]);//
+    } else {
+      q[i] = log(tau[i+N_old]) + von_mises_lpdf(((moult_dates[i] - moult_indices[i]*tau[i+N_old])+ 2*pi()) | mu[i+N_old], kappa[i+N_old]);//
+    }
   }
-}
 }
 profile("new_lik"){
-for (i in 1:N_new) {
-  if ((new_dates[i] - tau[i+N_old+N_moult]) > -1*pi()) {
-    R[i] = von_mises_cdf((new_dates[i] - tau[i+N_old+N_moult])| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+  if (lumped == 0){
+    for (i in 1:N_new) {
+      if ((new_dates[i] - tau[i+N_old+N_moult]) > -1*pi()) {
+        R[i] = von_mises_cdf((new_dates[i] - tau[i+N_old+N_moult])| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+      } else {
+        R[i] = von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+      }
+    }
   } else {
-    R[i] = von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+    for (i in 1:N_new) {
+      if ((new_dates[i] - tau[i+N_old+N_moult]) > -1*pi()) {
+        R[i] = (1 - von_mises_cdf(new_dates[i] | mu[i+N_old+N_moult], kappa[i+N_old+N_moult])) + von_mises_cdf((new_dates[i] - tau[i+N_old+N_moult])| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+      } else {
+        R[i] = (1 - von_mises_cdf(new_dates[i] | mu[i+N_old+N_moult], kappa[i+N_old+N_moult])) + von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+      }
+    }
   }
-}
 }
 target += sum(log(P))+sum(q)+sum(log(R));
 //priors
