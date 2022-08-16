@@ -4,3 +4,5 @@
 ^.*\.exe$
 ^data-raw/*$
 ^\.github$
+^inst/cmdstanr/simple_vM\.stan$
+^sandbox/*$
