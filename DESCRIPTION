@@ -20,5 +20,9 @@ Imports:
 Depends: 
     R (>= 2.10)
 Suggests: 
+    dplyr,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Remotes:
+  stan-dev/cmdstanr,
+SystemRequirements: CmdStan >= 2.25.0

@@ -43,4 +43,10 @@ jobs:
         with:
           extra-packages: rcmdcheck
 
+      - name: Install cmdstan
+        run: |
+          cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+          cmdstanr::install_cmdstan(cores = 2)
+        shell: Rscript {0}
+
       - uses: r-lib/actions/check-r-package@v1
