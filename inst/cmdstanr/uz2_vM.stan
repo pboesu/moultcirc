@@ -101,7 +101,7 @@ target += sum(log(P))+sum(q)+sum(log(R));
 //priors
 profile("priors"){
   alpha_mu ~ von_mises(0,0.5);
-  alpha_tau ~ normal(0,pi());//should be truncated? or are the parameter constraints sufficient?
+  alpha_tau ~ normal(pi(),pi());//should be truncated? or are the parameter constraints sufficient?
   alpha_kappa ~ normal(0,10);
   }
 }
