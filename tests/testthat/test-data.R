@@ -15,7 +15,7 @@ test_that("model runs through for moult in [-pi,pi]", {
 
 test_that("lumped model runs through for moult in [-pi,pi]", {
 
-  uz2_circ_lfit <- uz2_circ("moult_score", "yday", lump_non_moult = TRUE, data = sim_data_small[1:50,], chains = 1, refresh = 100, iter_warmup = 2000, iter_sampling = 2000, chains = 2, parallel_chains = 2)#very slow 35mins for 300iter
+  uz2_circ_lfit <- uz2_circ("moult_score", "yday", lump_non_moult = TRUE, data = sim_data_small[1:50,], refresh = 100, iter_warmup = 2000, iter_sampling = 2000, chains = 2, parallel_chains = 2)#very slow 35mins for 300iter
   expect_s3_class(uz2_circ_lfit, "moultmcmc")
   #get quantiles
   q_days =quantile(rstan::extract(uz2_circ_lfit$stanfit,pars = "mu_days")$mu_days, p = c(0.025, 0.975))
