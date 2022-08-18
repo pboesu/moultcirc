@@ -76,15 +76,18 @@ uz2_circ <- function(moult_index_column,
     }
     uz2_vM <- cmdstanr::cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"), stanc_options = list("O1"))
     message(paste('sampling with automatically generated initial values: ', paste(names(unlist(initfunc())), unlist(initfunc()), sep = '=', collapse = ' ')))
-    fit <- uz2_vM$sample(data = standata, init = initfunc, ...)
+    fit <- uz2_vM$sample(data = standata, init = initfunc, save_warmup = TRUE, ...)
     #out <- rstan::sampling(stanmodels$uz2_linpred, data = standata, init = initfunc, pars = outpars, ...)
   } else { stop('unknown init code')
   }} else {
     uz2_vM <- cmdstanr::cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"), stanc_options = list("O1"))
-    fit <- uz2_vM$sample(data = standata, init = init, ...)
+    fit <- uz2_vM$sample(data = standata, init = init, save_warmup = TRUE, ...)
   }
   stanfit <- rstan::read_stan_csv(fit$output_files())
   #rename regression coefficients for output
+  names(stanfit)[grep('mu_days', names(stanfit))] <- paste('mean',colnames(X_mu)[1], sep = '_')
+  names(stanfit)[grep('tau_days', names(stanfit))] <- paste('duration',colnames(X_tau)[1], sep = '_')
+  names(stanfit)[grep('sigma_exact', names(stanfit))] <- paste('sd',colnames(X_kappa)[1], sep = '_')
   # names(out)[grep('beta_mu', names(out))] <- paste('mean',colnames(X_mu), sep = '_')
   # names(out)[grep('beta_tau', names(out))] <- paste('duration',colnames(X_tau), sep = '_')
   # names(out)[grep('beta_sigma', names(out))] <- paste('log_sd',colnames(X_sigma), sep = '_')

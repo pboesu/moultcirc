@@ -2,10 +2,11 @@
 # moultcirc
 
   <!-- badges: start -->
+  [![Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.](https://www.repostatus.org/badges/latest/concept.svg)](https://www.repostatus.org/#concept) 
   [![R-CMD-check](https://github.com/pboesu/moultcirc/workflows/R-CMD-check/badge.svg)](https://github.com/pboesu/moultcirc/actions)
   <!-- badges: end -->
 
-The goal of moultcirc is to ...
+Circular regression models for primary feather moult data.
 
 ## Installation
 

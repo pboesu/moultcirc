@@ -45,6 +45,7 @@ transformed parameters{
 // and standard deviation 'sigma'.
 model {
   vector[N_old] P;
+  real lP;
   vector[N_moult] q;
   vector[N_new] R;
 
@@ -58,7 +59,8 @@ model {
   kappa = exp(X_kappa * append_row(alpha_kappa,beta_kappa));//use log link for dispersion lin pred
 profile("old_lik"){
   if (lumped == 0){
-    for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+    //for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+    lP = von_mises_lccdf(old_dates | mu[1:N_old], kappa[1:N_old]);
   } else {
       for (i in 1:N_old) {
     if ((old_dates[i] - tau[i]) > -1*pi()) {
@@ -67,6 +69,7 @@ profile("old_lik"){
       P[i] = (1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i])) + (von_mises_cdf(((old_dates[i] - tau[i]) + 2*pi())| mu[i],kappa[i]));//
     }
   }
+  lP = sum(log(P));
   }
 }
 profile("moult_lik"){
@@ -97,12 +100,12 @@ profile("new_lik"){
     }
   }
 }
-target += sum(log(P))+sum(q)+sum(log(R));
+target += lP+sum(q)+sum(log(R));
 //priors
 profile("priors"){
   alpha_mu ~ von_mises(0,0.5);
   alpha_tau ~ normal(pi(),pi());//should be truncated? or are the parameter constraints sufficient?
-  alpha_kappa ~ normal(0,10);
+  //alpha_kappa ~ normal(0.5,10);
   }
 }
 
@@ -115,9 +118,13 @@ real tau_days;
 profile("generated"){
  mu_days = (alpha_mu + pi())*365/(2*pi());//this really needs modulo treatment in case the CI spans "new year" - might really mess with downstream summary stats though
  tau_days = alpha_tau*365/(2*pi());
- end_date = mu_days + tau_days;//this needs modulo treatment
+ if (mu_days + tau_days < 365) {
+   end_date = mu_days + tau_days;
+ } else {
+   end_date = mu_days + tau_days - 365;
+ };//this needs modulo treatment
  sigma_approx = sqrt(1/exp(alpha_kappa))*365/(2*pi());
- sigma_exact = sqrt(1 - modified_bessel_first_kind(1,exp(alpha_kappa))/modified_bessel_first_kind(0,exp(alpha_kappa)))*365/(2*pi());//the circular standard deviation -- double check this, as this uses sqrt(circular variance) which is possibly incorrect; also this bit is numerically unstable
+ sigma_exact = sqrt(-1*log(modified_bessel_first_kind(1,exp(alpha_kappa))/modified_bessel_first_kind(0,exp(alpha_kappa))))*365/(2*pi());//the circular standard deviation; this bit may be numerically unstable
   }
 
 }
