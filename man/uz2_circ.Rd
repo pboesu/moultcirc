@@ -14,6 +14,7 @@ uz2_circ(
   data,
   init = "auto",
   log_lik = TRUE,
+  opt = TRUE,
   ...
 )
 }
@@ -35,6 +36,8 @@ uz2_circ(
 \item{init}{Specification of initial values for all or some parameters. Can be the string "auto" for an automatic guess based on the data, or any of the permitted rstan options: the digit 0, the strings "0" or "random", or a function. See the detailed documentation for the init argument in ?rstan::stan.}
 
 \item{log_lik}{boolean retain pointwise log-likelihood in output? This enables model assessment and selection via the loo package. Defaults to true, can lead to very large output arrays if sample size is large.}
+
+\item{opt}{logical use "optimized version of stancode}
 
 \item{...}{Arguments passed to `cmdstanr` sampling method (e.g. chains).}
 }

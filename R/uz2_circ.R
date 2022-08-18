@@ -10,6 +10,7 @@
 #' @param data Input data frame must contain a numeric column "date" and a column "moult_index" which is a numeric vector of moult scores ranging from 0 (old plumage) to  1 (new plumage).
 #' @param init Specification of initial values for all or some parameters. Can be the string "auto" for an automatic guess based on the data, or any of the permitted rstan options: the digit 0, the strings "0" or "random", or a function. See the detailed documentation for the init argument in ?rstan::stan.
 #' @param log_lik boolean retain pointwise log-likelihood in output? This enables model assessment and selection via the loo package. Defaults to true, can lead to very large output arrays if sample size is large.
+#' @param opt logical use "optimized version of stancode
 #' @param ... Arguments passed to `cmdstanr` sampling method (e.g. chains).
 #' @importFrom stats model.matrix
 #' @return An object of class `moultmcmc`
@@ -24,6 +25,7 @@ uz2_circ <- function(moult_index_column,
                      data,
                      init = "auto",
                      log_lik = TRUE,
+                     opt = TRUE,
                      ...) {
   stopifnot(all(data[[moult_index_column]] >= 0 & data[[moult_index_column]] <= 1))
   stopifnot(is.numeric(data[[date_column]]))
@@ -58,6 +60,8 @@ uz2_circ <- function(moult_index_column,
   } else {
     outpars <- c('beta_mu','beta_tau','beta_sigma', 'sigma_intercept')
   }
+  #choose stan model
+  if (opt == TRUE) {stanpath = "cmdstanr/uz2_vM_opt.stan"} else (stanpath = "cmdstanr/uz2_vM.stan")
   #guess initial values
   if(inherits(init, 'character')){
     if (init == "auto"){
@@ -74,13 +78,13 @@ uz2_circ <- function(moult_index_column,
            beta_tau = as.array(c(rep(0, standata$N_pred_tau - 1))),
            beta_kappa = as.array(c(rep(0, standata$N_pred_kappa - 1))))#NB this is on log link scale
     }
-    uz2_vM <- cmdstanr::cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"), stanc_options = list("O1"))
+    uz2_vM <- cmdstanr::cmdstan_model(system.file(stanpath,package="moultcirc"), stanc_options = list("O1"))
     message(paste('sampling with automatically generated initial values: ', paste(names(unlist(initfunc())), unlist(initfunc()), sep = '=', collapse = ' ')))
     fit <- uz2_vM$sample(data = standata, init = initfunc, save_warmup = TRUE, ...)
     #out <- rstan::sampling(stanmodels$uz2_linpred, data = standata, init = initfunc, pars = outpars, ...)
   } else { stop('unknown init code')
   }} else {
-    uz2_vM <- cmdstanr::cmdstan_model(system.file("cmdstanr/uz2_vM.stan",package="moultcirc"), stanc_options = list("O1"))
+    uz2_vM <- cmdstanr::cmdstan_model(system.file(stanpath,package="moultcirc"), stanc_options = list("O1"))
     fit <- uz2_vM$sample(data = standata, init = init, save_warmup = TRUE, ...)
   }
   stanfit <- rstan::read_stan_csv(fit$output_files())
