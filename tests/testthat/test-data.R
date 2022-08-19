@@ -13,6 +13,20 @@ test_that("model runs through for moult contiguous in [-pi,pi]", {
 
   })
 
+test_that("opt = F model runs through for moult contiguous in [-pi,pi]", {
+
+  uz2_circ_ufit <- uz2_circ("moult_score", "yday", data = sim_data_small[1:50,], chains = 2, parallel_chains = 2, refresh = 500, opt = FALSE)
+  expect_s3_class(uz2_circ_ufit, "moultmcmc")
+  #get quantiles
+  q_days =quantile(rstan::extract(uz2_circ_ufit$stanfit,pars = "mu_days")$mu_days, p = c(0.025, 0.975))
+  q_duration = quantile(rstan::extract(uz2_circ_ufit$stanfit,pars = "tau_days")$tau_days, p = c(0.025, 0.975))
+  testthat::expect_equal(TRUE, dplyr::between(157, q_days[1],q_days[2]))
+  testthat::expect_equal(TRUE, dplyr::between(102, q_duration[1],q_duration[2]))
+  testthat::expect_equal(TRUE, all(rstan::summary(uz2_circ_ufit$stanfit)$summary[,'Rhat']<1.1))
+
+})
+
+
 test_that("model runs through for moult data that are bimodal in [-pi,pi] ", {
 
   uz2_circ_usfit <- uz2_circ("moult_score", "yday_shifted", data = sim_data_small[1:50,], chains = 2, parallel_chains = 2, refresh = 500)

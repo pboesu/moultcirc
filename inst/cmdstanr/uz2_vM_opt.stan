@@ -20,6 +20,19 @@ functions {
       }
     return n;
     }
+
+    vector rollunderv(vector day){//could be done with overloading?
+    vector[size(day)] out;
+    real n;
+    for(i in 1:size(day)){
+      n = day[i];
+      while (n < -pi()){
+        n = n + 2*pi();
+       }
+      out[i] = n;
+    }
+    return out;
+  }
   }
 
 data {
@@ -64,8 +77,9 @@ transformed parameters{
 model {
   vector[N_old] P;
   real lP;
-  vector[N_moult] q;
+  real q;
   vector[N_new] R;
+  real lR;
 
   vector[N_old+N_moult+N_new] mu;//start date lin pred
   vector[N_old+N_moult+N_new] tau;//duration lin pred
@@ -91,23 +105,23 @@ profile("old_lik"){
   }
 }
 profile("moult_lik"){
-  for (i in 1:N_moult) {
+  //for (i in 1:N_moult) {
     //if ((moult_dates[i] - moult_indices[i]*tau[i+N_old]) > -1*pi()) {
-      q[i] = log(tau[i+N_old]) + von_mises_lpdf(rollunder(moult_dates[i] - moult_indices[i]*tau[i+N_old]) | mu[i+N_old], kappa[i+N_old]);//
+      q = sum(log(tau[(1+N_old):(N_old+N_moult)])) + von_mises_lpdf(rollunderv(moult_dates - moult_indices.*tau[(1+N_old):(N_old+N_moult)]) | mu[(1+N_old):(N_old+N_moult)], kappa[(1+N_old):(N_old+N_moult)]);//
     //} else {
       //q[i] = log(tau[i+N_old]) + von_mises_lpdf(((moult_dates[i] - moult_indices[i]*tau[i+N_old])+ 2*pi()) | mu[i+N_old], kappa[i+N_old]);//
     //}
-  }
+  //}
 }
 profile("new_lik"){
   if (lumped == 0){
-    for (i in 1:N_new) {
+    //for (i in 1:N_new) {
       //if ((new_dates[i] - tau[i+N_old+N_moult]) > -1*pi()) {
-        R[i] = von_mises_cdf(rollunder(new_dates[i] - tau[i+N_old+N_moult])| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
+        lR = von_mises_lcdf(rollunderv(new_dates - tau[(1+N_old+N_moult):(N_old+N_moult+N_new)])| mu[(1+N_old+N_moult):(N_old+N_moult+N_new)],kappa[(1+N_old+N_moult):(N_old+N_moult+N_new)]);//this needs tweaking to ensure the difference is always in [-pi,pi]
       //} else {
       //  R[i] = von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
      // }
-    }
+    //}
   } else {
     for (i in 1:N_new) {
       //if ((new_dates[i] - tau[i+N_old+N_moult]) > -1*pi()) {
@@ -116,9 +130,10 @@ profile("new_lik"){
       //  R[i] = (1 - von_mises_cdf(new_dates[i] | mu[i+N_old+N_moult], kappa[i+N_old+N_moult])) + von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
       //}
     }
+    lR = sum(log(R));
   }
 }
-target += lP+sum(q)+sum(log(R));
+target += lP+q+lR;
 //priors
 profile("priors"){
   alpha_mu ~ von_mises(0,0.5);

@@ -45,7 +45,7 @@ transformed parameters{
 // and standard deviation 'sigma'.
 model {
   vector[N_old] P;
-  real lP;
+  //real lP;
   vector[N_moult] q;
   vector[N_new] R;
 
@@ -59,8 +59,8 @@ model {
   kappa = exp(X_kappa * append_row(alpha_kappa,beta_kappa));//use log link for dispersion lin pred
 profile("old_lik"){
   if (lumped == 0){
-    //for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
-    lP = von_mises_lccdf(old_dates | mu[1:N_old], kappa[1:N_old]);
+    for (i in 1:N_old) P[i] = 1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i]);
+    //lP = von_mises_lccdf(old_dates | mu[1:N_old], kappa[1:N_old]);
   } else {
       for (i in 1:N_old) {
     if ((old_dates[i] - tau[i]) > -1*pi()) {
@@ -69,7 +69,7 @@ profile("old_lik"){
       P[i] = (1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i])) + (von_mises_cdf(((old_dates[i] - tau[i]) + 2*pi())| mu[i],kappa[i]));//
     }
   }
-  lP = sum(log(P));
+  //lP = sum(log(P));
   }
 }
 profile("moult_lik"){
@@ -100,7 +100,7 @@ profile("new_lik"){
     }
   }
 }
-target += lP+sum(q)+sum(log(R));
+target += sum(log(P))+sum(q)+sum(log(R));
 //priors
 profile("priors"){
   alpha_mu ~ von_mises(0,0.5);
