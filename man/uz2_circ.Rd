@@ -10,6 +10,7 @@ uz2_circ(
   start_formula = ~1,
   duration_formula = ~1,
   kappa_formula = ~1,
+  duration_prior = list(mean = 182.5, sd = 61),
   lump_non_moult = FALSE,
   data,
   init = "auto",
@@ -28,6 +29,8 @@ uz2_circ(
 \item{duration_formula}{model formula for duration}
 
 \item{kappa_formula}{model formula for start date sigma}
+
+\item{duration_prior}{list with elements `mean` and `sd`. Hyperparameters for the normal prior on duration (in days; 0 < mean < 365; sd > 0)}
 
 \item{lump_non_moult}{logical; should pre- and post-moult observations be treated as indistinguishable? if TRUE, the type 2L model will be fitted.}
 

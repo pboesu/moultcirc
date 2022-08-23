@@ -6,6 +6,7 @@
 #' @param start_formula model formula for start date
 #' @param duration_formula model formula for duration
 #' @param kappa_formula model formula for start date sigma
+#' @param duration_prior list with elements `mean` and `sd`. Hyperparameters for the normal prior on duration (in days; 0 < mean < 365; sd > 0)
 #' @param lump_non_moult logical; should pre- and post-moult observations be treated as indistinguishable? if TRUE, the type 2L model will be fitted.
 #' @param data Input data frame must contain a numeric column "date" and a column "moult_index" which is a numeric vector of moult scores ranging from 0 (old plumage) to  1 (new plumage).
 #' @param init Specification of initial values for all or some parameters. Can be the string "auto" for an automatic guess based on the data, or any of the permitted rstan options: the digit 0, the strings "0" or "random", or a function. See the detailed documentation for the init argument in ?rstan::stan.
@@ -21,6 +22,7 @@ uz2_circ <- function(moult_index_column,
                      start_formula = ~1,
                      duration_formula = ~1,
                      kappa_formula = ~1,
+                     duration_prior = list(mean = 182.5, sd = 61),
                      lump_non_moult = FALSE,
                      data,
                      init = "auto",
@@ -31,6 +33,8 @@ uz2_circ <- function(moult_index_column,
   stopifnot(is.numeric(data[[date_column]]))
   stopifnot(is.data.frame(data))
   stopifnot(all(data[[date_column]] >= 0 & data[[date_column]] <= 365))
+  stopifnot(is.numeric(duration_prior$mean) & duration_prior$mean > 0 & duration_prior$mean < 365)
+  stopifnot(is.numeric(duration_prior$sd) & duration_prior$sd > 0)
   #transform dates to radians [-pi,pi]
   data$circday__ = data[[date_column]]*(2*pi / 365 ) - pi
   #order data by moult category
@@ -53,7 +57,9 @@ uz2_circ <- function(moult_index_column,
                    N_pred_tau = ncol(X_tau),
                    X_kappa = X_kappa,
                    N_pred_kappa = ncol(X_kappa),
-                   lumped = as.numeric(lump_non_moult))
+                   lumped = as.numeric(lump_non_moult),
+                   tau_prior_mean  = duration_prior$mean/365*2*pi,#convert to radians
+                   tau_prior_sd = duration_prior$sd/365*2*pi)
   #include pointwise log_lik matrix  in output?
   if(log_lik){
     outpars <- c('beta_mu','beta_tau','beta_sigma', 'sigma_intercept', 'log_lik')
@@ -68,12 +74,13 @@ uz2_circ <- function(moult_index_column,
       moult_dates_circ <- circular::circular(standata$moult_dates)
     mu_start = as.numeric(circular::mean.circular(moult_dates_circ))#use circular mean of moult obs
     tau_start = 4*sqrt(1/circular::mle.vonmises(moult_dates_circ)$kappa)#use 4sd of gaussian approximation of dispersion of moult dates
-    kappa_start = min(0.5, circular::mle.vonmises(moult_dates_circ)$kappa)# vM MLE of kappa seems to be too tight and then leads to slow sampling, try large dispersion first
+    kappa_start = min(1, circular::mle.vonmises(moult_dates_circ)$kappa)# vM MLE of kappa seems to be too tight and then leads to slow sampling, try large dispersion first
     initfunc <- function(chain_id = 1) {
       # cat("chain_id =", chain_id, "\n")
       list(alpha_mu = mu_start, #initialize intercept term from data, set inits for all other effects to 0
            alpha_tau = tau_start,
            alpha_kappa = log(kappa_start),
+           #inv_kapp = log(1/kappa_start),
            beta_mu = as.array(c(rep(0, standata$N_pred_mu - 1))), #initialize intercept term from data, set inits for all other effects to 0
            beta_tau = as.array(c(rep(0, standata$N_pred_tau - 1))),
            beta_kappa = as.array(c(rep(0, standata$N_pred_kappa - 1))))#NB this is on log link scale

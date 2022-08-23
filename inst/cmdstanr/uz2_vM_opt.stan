@@ -21,7 +21,7 @@ functions {
     return n;
     }
 
-    vector rollunderv(vector day){//could be done with overloading?
+    vector rollunderv(vector day){//could be done with overloading? //looping inefficient? could profile in generated quantities: looping over cdf with if/else vs vectorized cdf with rollunder loop?
     vector[size(day)] out;
     real n;
     for(i in 1:size(day)){
@@ -52,6 +52,8 @@ data {
   int N_pred_kappa;//number of predictors for start date sigma
   matrix[N_old+N_moult+N_new,N_pred_kappa] X_kappa;//design matrix for sigma start NB: when forming design matrix must paste together responses in blocks old, moult, new
   int<lower=0,upper=1> lumped; //indicator variable for t2l likelihood
+  real tau_prior_mean;
+  real<lower = 0> tau_prior_sd;
 }
 
 // The parameters accepted by the model. Our model
@@ -59,7 +61,7 @@ data {
 parameters {
   real<lower=-1*pi(),upper=pi()> alpha_mu;//mean start date // model seems to fail when this is bounded on 0,2*pi
   real<lower=0,upper=2*pi()> alpha_tau;//moult duration
-  real alpha_kappa;//von Mises concentration parameter of moult start date // unconstrained b/c log link is used
+  real alpha_kappa;// von Mises concentration parameter of moult start date // unconstrained b/c log link is used
   vector[N_pred_mu-1] beta_mu;//regression coefficients for start date
   vector[N_pred_tau-1] beta_tau;//regression coefficients for duration
   vector[N_pred_kappa-1] beta_kappa;//regression coefficients for sigma start
@@ -69,7 +71,8 @@ parameters {
 }
 
 transformed parameters{
-
+ ////real alpha_kappa;
+ //alpha_kappa = 1/inv_kappa;
 }
 // The model to be estimated. We model the output
 // 'y' to be normally distributed with mean 'mu'
@@ -101,7 +104,7 @@ profile("old_lik"){
     //  P[i] = (1 - von_mises_cdf(old_dates[i] | mu[i], kappa[i])) + (von_mises_cdf(((old_dates[i] - tau[i]) + 2*pi())| mu[i],kappa[i]));//
     //}
   }
-  lP = sum(log(P));
+  lP = sum(log(fmin(1,P)));
   }
 }
 profile("moult_lik"){
@@ -130,15 +133,15 @@ profile("new_lik"){
       //  R[i] = (1 - von_mises_cdf(new_dates[i] | mu[i+N_old+N_moult], kappa[i+N_old+N_moult])) + von_mises_cdf(((new_dates[i] - tau[i+N_old+N_moult]) + 2*pi())| mu[i+N_old+N_moult],kappa[i+N_old+N_moult]);//this needs tweaking to ensure the difference is always in [-pi,pi]
       //}
     }
-    lR = sum(log(R));
+    lR = sum(log(fmin(1,R)));
   }
 }
 target += lP+q+lR;
 //priors
 profile("priors"){
   alpha_mu ~ von_mises(0,0.5);
-  alpha_tau ~ normal(pi(),pi());//should be truncated? or are the parameter constraints sufficient?
-  //alpha_kappa ~ normal(0.5,10);
+  alpha_tau ~ normal(tau_prior_mean,tau_prior_sd);//should be truncated? or are the parameter constraints sufficient?
+  alpha_kappa ~ normal(0,1);
   }
 }
 
